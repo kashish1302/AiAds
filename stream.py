@@ -103,7 +103,7 @@ if page == "FaceAI Feature Extractor":
                 img = np.array(PIL.open(upload))
                 img = image.pil2tensor(img, np.float32).div_(255)
                 img = image.Image(img)
-                model = load_learner('Model/data/')
+                model = load_learner('export.pkl')
                 model.predict(img, thresh=0.3)[0]
                 
                 
@@ -116,7 +116,7 @@ if page == "FaceAI Feature Extractor":
                 img = pil_img.convert('RGB')
                 img = image.pil2tensor(img, np.float32).div_(255)
                 img = image.Image(img)
-                model = load_learner('Model/data/')
+                model = load_learner('')
                 st.image(pil_img, use_column_width=True)
                 pred_class = model.predict(img)[0]
                 pred_class
