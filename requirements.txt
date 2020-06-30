@@ -4,5 +4,5 @@ numpy
 Pillow
 fastai
 https://download.pytorch.org/whl/cpu/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
-torchvision
+https://download.pytorch.org/whl/cpu/torchvision-0.3.0-cp36-cp36m-linux_x86_64.whl
 python-multipart
