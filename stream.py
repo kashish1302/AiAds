@@ -1,6 +1,5 @@
 from fastai.vision import open_image, load_learner, image, torch
 from fastai import *
-from fastai.vision import *
 import streamlit as st
 import pandas as pd
 import numpy as np
@@ -11,6 +10,9 @@ import os
 import PIL.Image as PIL
 import requests
 from io import BytesIO
+import aiohttp
+import asyncio
+from pathlib import Path
 
 st.title('Welcome to the new change in Advertising')
 imag = Image.open('Banner.jpg')
@@ -95,6 +97,36 @@ if page == "FaceAI Feature Extractor":
     st.header('Deep Learning backed Facial Feature Extractor')
     st.subheader('Select the mode of image input')
     mode = st.radio('Would you like to run the program on your own face or on someone else face', ['Yes, I would try it on yourself','No, I would like to use an image of someone else on the internet'])
+    export_file_url = 'https://www.dropbox.com/s/tv8ianotn9045wc/256_stage-2-rn50.pkl?dl=1'
+    export_file_name = '256_stage-2-rn50.pkl'
+    path = Path().resolve()
+    
+    async def download_file(url, dest):
+        if dest.exists(): return
+        async with aiohttp.ClientSession() as session:
+            async with session.get(url) as response:
+                data = await response.read()
+                with open(dest, 'wb') as f:
+                    f.write(data)
+    
+    async def setup_learner():
+        await download_file(export_file_url, path / export_file_name)
+        try:
+            learn = load_learner(path, export_file_name)
+            return learn
+        except RuntimeError as e:
+            if len(e.args) > 0 and 'CPU-only machine' in e.args[0]:
+                print(e)
+                message = "\n\nThis model was trained with an old version of fastai and will not work in a CPU environment.\n\nPlease update the fastai library in your training environment and export your model again.\n\nSee instructions for 'Returning to work' at https://course.fast.ai."
+                raise RuntimeError(message)
+            else:
+                raise
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
+    tasks = [asyncio.ensure_future(setup_learner())]
+    learn = loop.run_until_complete(asyncio.gather(*tasks))[0]
+    loop.close()
+    
     if mode=='Yes, I would try it on yourself': 
         upload = st.file_uploader("Upload an image", type=("png", "jpg", "jpeg"))
         if st.button('Lets find.'):
@@ -103,8 +135,7 @@ if page == "FaceAI Feature Extractor":
                 img = np.array(PIL.open(upload))
                 img = image.pil2tensor(img, np.float32).div_(255)
                 img = image.Image(img)
-                model = load_learner('Model/data/')
-                model.predict(img, thresh=0.3)[0]
+                learn.predict(img, thresh=0.3)[0]
                 
                 
     elif mode=='No, I would like to use an image of someone else on the internet':
@@ -112,12 +143,11 @@ if page == "FaceAI Feature Extractor":
         if st.button('Lets find.'):    
             if url != "":
                 response = requests.get(url)
-                pil_img = PIL.open(BytesIO(response.content))
+                pil_img = Image.open(BytesIO(response.content))
                 img = pil_img.convert('RGB')
                 img = image.pil2tensor(img, np.float32).div_(255)
                 img = image.Image(img)
-                model = load_learner('Model/data/')
                 st.image(pil_img, use_column_width=True)
-                pred_class = model.predict(img)[0]
+                pred_class = learn.predict(img)[0]
                 pred_class
     
